@@ -12,6 +12,7 @@ var cnIpRange = __IP_LIST__;
 var cnIp16Range = __IP16_LIST__;
 
 var subnetIpRangeList = [
+0,1,
 167772160,184549376,	//10.0.0.0/8
 2886729728,2887778304,	//172.16.0.0/12
 3232235520,3232301056,	//192.168.0.0/16
@@ -33,7 +34,7 @@ function convertAddress(ipchars) {
 	(bytes[2] << 8) |
 	(bytes[3]);
 	return result >>> 0;
-};
+}
 function getProxyFromDirectIP(strIp) {
 	var intIp = convertAddress(strIp);
 	if ( isInSubnetRange(subnetIpRangeList, intIp) ) {
@@ -57,7 +58,7 @@ function isInSingleRange(ipRange, intIp) {
 	}
 }
 function isInSubnetRange(ipRange, intIp) {
-	for ( var i = 0; i < 8; i += 2 ) {
+	for ( var i = 0; i < 10; i += 2 ) {
 		if ( ipRange[i] <= intIp && intIp < ipRange[i+1] )
 			return true;
 	}

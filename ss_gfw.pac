@@ -1,85 +1,18 @@
-var wall_proxy = __PROXY__;
-var nowall_proxy = __NOWALL_PROXY__;
-var direct = __DIRECT__;
-var auto_proxy = __AUTO_PROXY__; // if you have something like COW proxy
-var ip_proxy = __IP_PROXY__;
+var direct = "DIRECT;";
+
+var wall_proxy = function(){ return "__PROXY__"; };
+var wall_v6_proxy = function(){ return "__PROXY__"; };
+
+var nowall_proxy = function(){ return direct; };
+var ip_proxy = function(){ return nowall_proxy(); };
+var ipv6_proxy = function(){ return nowall_proxy(); };
 
 /*
  * Copyright (C) 2014 breakwa11
  * https://github.com/breakwa11/gfw_whitelist
  */
 
-var white_domains = __WHITE_DOMAINS__;
-var black_domains = __GFWBLACK_DOMAINS__;
-
-var subnetIpRangeList = [
-0,1,
-167772160,184549376,	//10.0.0.0/8
-2886729728,2887778304,	//172.16.0.0/12
-3232235520,3232301056,	//192.168.0.0/16
-2130706432,2130706688	//127.0.0.0/24
-];
-
-var hasOwnProperty = Object.hasOwnProperty;
-
-function check_ipv4(host) {
-	var re_ipv4 = /^\d+\.\d+\.\d+\.\d+$/g;
-	if (re_ipv4.test(host)) {
-		return true;
-	}
-}
-function convertAddress(ipchars) {
-	var bytes = ipchars.split('.');
-	var result = (bytes[0] << 24) |
-	(bytes[1] << 16) |
-	(bytes[2] << 8) |
-	(bytes[3]);
-	return result >>> 0;
-}
-function isInSubnetRange(ipRange, intIp) {
-	for ( var i = 0; i < 10; i += 2 ) {
-		if ( ipRange[i] <= intIp && intIp < ipRange[i+1] )
-			return true;
-	}
-}
-function getProxyFromDirectIP(strIp) {
-	var intIp = convertAddress(strIp);
-	if ( isInSubnetRange(subnetIpRangeList, intIp) ) {
-		return direct;
-	}
-	return ip_proxy;
-}
-function isInDomains(domain_dict, host) {
-	var suffix;
-	var pos1 = host.lastIndexOf('.');
-
-	suffix = host.substring(pos1 + 1);
-	if (suffix == "cn") {
-		return true;
-	}
-
-	var domains = domain_dict[suffix];
-	if ( domains === undefined ) {
-		return false;
-	}
-	host = host.substring(0, pos1);
-	var pos = host.lastIndexOf('.');
-
-	while(1) {
-		if (pos <= 0) {
-			if (hasOwnProperty.call(domains, host)) {
-				return true;
-			} else {
-				return false;
-			}
-		}
-		suffix = host.substring(pos + 1);
-		if (hasOwnProperty.call(domains, suffix)) {
-			return true;
-		}
-		pos = host.lastIndexOf('.', pos - 1);
-	}
-}
+var rules = __RULES__;
 
 /*
 * This file is part of Adblock Plus <http://adblockplus.org/>,
@@ -161,7 +94,7 @@ Filter.fromText = function(text)
 		return Filter.knownFilters[text];
 	}
 	var ret;
-	if (text[0] == "!")
+	if (text.charAt(0) == "!")
 	{
 		ret = new CommentFilter(text);
 	}
@@ -215,7 +148,7 @@ extend(ActiveFilter, Filter, {
 				source = source.toUpperCase();
 			}
 			var list = source.split(this.domainSeparator);
-			if (list.length == 1 && list[0][0] != "~")
+			if (list.length == 1 && (list[0]).charAt(0) != "~")
 			{
 				domains = createDict();
 				domains[""] = false;
@@ -240,7 +173,7 @@ extend(ActiveFilter, Filter, {
 						continue;
 					}
 					var include;
-					if (domain[0] == "~")
+					if (domain.charAt(0) == "~")
 					{
 						include = false;
 						domain = domain.substr(1);
@@ -338,7 +271,7 @@ function RegExpFilter(text, regexpSource, contentType, matchCase, domains, third
 	{
 		this.sitekeySource = sitekeys;
 	}
-	if (regexpSource.length >= 2 && regexpSource[0] == "/" && regexpSource[regexpSource.length - 1] == "/")
+	if (regexpSource.length >= 2 && regexpSource.charAt(0) == "/" && regexpSource.charAt(regexpSource.length - 1) == "/")
 	{
 		var regexp = new RegExp(regexpSource.substr(1, regexpSource.length - 2), this.matchCase ? "" : "i");
 		this.regexp = regexp;
@@ -435,7 +368,7 @@ RegExpFilter.fromText = function(text)
 				}
 				contentType |= RegExpFilter.typeMap[option];
 			}
-			else if (option[0] == "~" && option.substr(1) in RegExpFilter.typeMap)
+			else if (option.charAt(0) == "~" && option.substr(1) in RegExpFilter.typeMap)
 			{
 				if (contentType == null)
 				{
@@ -839,24 +772,69 @@ CombinedMatcher.prototype = {
 };
 var defaultMatcher = new CombinedMatcher();
 
+for (var i = 0; i < rules.length; i++) {
+	defaultMatcher.add(Filter.fromText(rules[i]));
+}
+
+var subnetIpRangeList = [
+0,1,
+167772160,184549376,	//10.0.0.0/8
+2886729728,2887778304,	//172.16.0.0/12
+3232235520,3232301056,	//192.168.0.0/16
+2130706432,2130706688	//127.0.0.0/24
+];
+
+function convertAddress(ipchars) {
+	var bytes = ipchars.split('.');
+	var result = (bytes[0] << 24) |
+	(bytes[1] << 16) |
+	(bytes[2] << 8) |
+	(bytes[3]);
+	return result >>> 0;
+}
+
+function check_ipv4(host) {
+	var re_ipv4 = /^\d+\.\d+\.\d+\.\d+$/g;
+	if (re_ipv4.test(host)) {
+		return true;
+	}
+}
+function check_ipv6(host) {
+	var re_ipv6 = /^\[?([a-fA-F0-9]{0,4}\:){1,7}[a-fA-F0-9]{0,4}\]?$/g;
+	if (re_ipv6.test(host)) {
+		return true;
+	}
+}
+function check_ipv6_dns(dnsstr) {
+	var re_ipv6 = /([a-fA-F0-9]{0,4}\:){1,7}[a-fA-F0-9]{0,4}(%[0-9]+)?/g;
+	if (re_ipv6.test(dnsstr)) {
+		return true;
+	}
+}
+function isInSubnetRange(ipRange, intIp) {
+	for ( var i = 0; i < 10; i += 2 ) {
+		if ( ipRange[i] <= intIp && intIp < ipRange[i+1] )
+			return true;
+	}
+}
+function getProxyFromIP(strIp) {
+	var intIp = convertAddress(strIp);
+	if ( isInSubnetRange(subnetIpRangeList, intIp) ) {
+		return direct;
+	}
+	return ip_proxy();
+}
+
 function FindProxyForURL(url, host) {
 	if ( isPlainHostName(host) === true ) {
 		return direct;
 	}
 	if ( check_ipv4(host) === true ) {
-		return getProxyFromDirectIP(host);
+		return getProxyFromIP(host);
 	}
-	if ( isInDomains(white_domains, host) === true ) {
-		return nowall_proxy;
+	if (defaultMatcher.matchesAny(url, host) instanceof BlockingFilter) {
+		return wall_proxy();
 	}
-	var filter = defaultMatcher.matchesAny(url, host);
-	if ( filter instanceof WhitelistFilter ) {
-		return nowall_proxy;
-	}
-	if ( filter instanceof BlockingFilter ) {
-		return wall_proxy;
-	}
-
-	return auto_proxy;
+	return direct;
 }
 

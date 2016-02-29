@@ -11,6 +11,7 @@ var ip_proxy = "DIRECT;";
 var white_domains = __DOMAINS__;
 
 var subnetIpRangeList = [
+0,1,
 167772160,184549376,	//10.0.0.0/8
 2886729728,2887778304,	//172.16.0.0/12
 3232235520,3232301056,	//192.168.0.0/16
@@ -27,6 +28,20 @@ function check_ipv4(host) {
 		// in theory, we can add chnroutes test here.
 		// but that is probably too much an overkill.
 		return true;
+	}
+}
+function convertAddress(ipchars) {
+	var bytes = ipchars.split('.');
+	var result = (bytes[0] << 24) |
+	(bytes[1] << 16) |
+	(bytes[2] << 8) |
+	(bytes[3]);
+	return result >>> 0;
+}
+function isInSubnetRange(ipRange, intIp) {
+	for ( var i = 0; i < 10; i += 2 ) {
+		if ( ipRange[i] <= intIp && intIp < ipRange[i+1] )
+			return true;
 	}
 }
 function getProxyFromDirectIP(strIp) {
@@ -47,7 +62,7 @@ function isInDomains(domain_dict, host) {
 
 	var domains = domain_dict[suffix];
 	if ( domains === undefined ) {
-		return true;
+		return false;
 	}
 	host = host.substring(0, pos1);
 	var pos = host.lastIndexOf('.');
